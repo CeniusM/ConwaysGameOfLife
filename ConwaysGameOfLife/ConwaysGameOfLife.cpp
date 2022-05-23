@@ -57,7 +57,6 @@ int main()
 		//	for (int j = 0; j < nScreenHeight; j++)
 		//		map[i][j] ^= 0b1;
 
-
 		// timer
 		auto start = std::chrono::high_resolution_clock::now();
 
@@ -102,14 +101,16 @@ int main()
 			}
 		}
 		
-		// clean up
-		int** temp = map;
-		map = newMap;
+		// clean up and new init
 		for (int i = 0; i < nScreenWidth; i++)
 		{
-			delete[] temp[i];
+			for (int j = 0; j < nScreenHeight; j++)
+			{
+				map[i][j] = newMap[i][j];
+			}
+			delete[] newMap[i];
 		}
-		delete[] temp;
+		delete[] newMap;
 
 
 		// generate frame
