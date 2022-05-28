@@ -17,6 +17,31 @@ int nScreenHeight = mapHeight;
 
 
 
+/*
+
+Ideer
+
+to get a 2d grid of the screen you can maby do something like this
+
+wchar_t** arr2d = new wchar_t*[nScreenHeight];
+for (int i = 0; i < nScreenHeight; i++)
+{
+	arr2d[i] = &screen[i * nScreenWidth];
+}
+
+
+// this sould edit, right?
+// screen[4 * nScreenHeight + 6 * nScreenWidth] = 'A';
+
+arr2d[4][6] = 'A';
+
+*/
+
+
+
+
+
+
 int main()
 {
 	// set console size
