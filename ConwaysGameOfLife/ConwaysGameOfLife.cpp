@@ -7,9 +7,10 @@
 #include <Windows.h>
 #include <thread>
 #include <string>
+#include <conio.h>
 using namespace std;
 
-int mapWidth = 60;
+int mapWidth = 100;
 int mapHeight = 60;
 
 int nScreenWidth = mapWidth * 2;// each square is 2 wide
@@ -38,17 +39,121 @@ arr2d[4][6] = 'A';
 */
 
 
-
-
-
-
-int main()
+void GenerateNewMap(int** map)
 {
-	// set console size
+	// generate map
+	for (int i = 0; i < mapWidth; i++)
+	{
+		for (int j = 0; j < mapHeight; j++)
+		{
+			if (rand() % 3 == 1)
+			{
+				map[i][j] = 1;
+			}
+		}
+	}
+}
+
+void NewGeneration(int** map, int** newMap, int width, int height)
+{
+	for (int i = 0; i < mapWidth; i++)
+	{
+		for (int j = 0; j < mapHeight; j++)
+		{
+			int aliveAround = 0;
+			for (int x = -1; x < 2; x++)
+			{
+				for (int y = -1; y < 2; y++)
+				{
+					if (i + x < 0 || i + x > mapWidth - 1 || j + y < 0 || j + y > mapHeight - 1 || (x == 0 && y == 0))
+						continue;
+					if (map[i + x][j + y] == 1)
+						aliveAround++;
+				}
+			}
+			if (map[i][j] == 1)
+			{
+				if (aliveAround < 2)
+				{
+					newMap[i][j] = 0;
+					continue;
+				}
+				else if (aliveAround > 3)
+				{
+					newMap[i][j] = 0;
+					continue;
+				}
+				if (aliveAround == 2 || aliveAround == 3)
+				{
+					newMap[i][j] = 1;
+				}
+			}
+			else if (map[i][j] == 0)
+			{
+				if (aliveAround == 3)
+					newMap[i][j] = 1;
+			}
+		}
+	}
+	for (int i = 0; i < mapWidth; i++)
+	{
+		for (int j = 0; j < mapHeight; j++)
+		{
+			map[i][j] = newMap[i][j];
+		}
+	}
+}
+
+void GenerateFrame(int** map, wchar_t* screen)
+{
+	for (int i = 0; i < mapWidth; i++)
+	{
+		for (int j = 0; j < mapHeight; j++)
+		{
+			if (map[i][j] == 1)
+			{
+				screen[(i << 1) + j * nScreenWidth] = 0x2588; // '█' = UTF-16 (hex) 0x2588
+				screen[(i << 1) + j * nScreenWidth + 1] = 0x2588;
+			}
+			else
+			{
+				screen[(i << 1) + j * nScreenWidth] = ' ';
+				screen[(i << 1) + j * nScreenWidth + 1] = ' ';
+			}
+		}
+	}
+}
+
+int** InitMap(int x, int y)
+{
+	int** map = new int* [x];
+	for (int i = 0; i < x; i++)
+	{
+		map[i] = new int[y] {};
+	}
+	return map;
+}
+
+void DeleteMap(int** map, int x)
+{
+	for (int i = 0; i < x; i++)
+	{
+		delete[] map[i];
+	}
+	delete[] map;
+}
+
+void SetConsoleSize(int x, int y, int charWidth, int charHeight)
+{
 	HWND console = GetConsoleWindow();
 	RECT r;
 	GetWindowRect(console, &r); //stores the console's current dimensions
-	MoveWindow(console, r.left, r.top, nScreenWidth * 8 + 40/*why i need +40, no clue*/, nScreenHeight * 16 + 40, TRUE);
+	MoveWindow(console, r.left, r.top, x * charWidth + 40/*why i need +40, no clue*/, y * charHeight + 40, TRUE);
+}
+
+int main()
+{
+	SetConsoleSize(nScreenWidth, nScreenHeight, 8, 16);
 
 	// Create Screen Buffer
 	wchar_t* screen = new wchar_t[nScreenWidth * nScreenHeight];
@@ -63,113 +168,28 @@ int main()
 	SetConsoleActiveScreenBuffer(hConsole);
 	DWORD dwBytesWritten = 0;
 
-	// init map
-	int** map = new int* [mapWidth];
-	for (int i = 0; i < mapWidth; i++)
-	{
-		map[i] = new int[mapHeight]{};
-	}
-	int** newMap = new int* [mapWidth];
-	for (int i = 0; i < mapWidth; i++)
-	{
-		newMap[i] = new int[mapHeight] {};
-	}
+	// init maps
+	int** map = InitMap(mapWidth, mapHeight);
+	int** newMap = InitMap(mapWidth, mapHeight);
 
-	// generate map
-	for (int i = 0; i < mapWidth; i++)
-	{
-		for (int j = 0; j < mapHeight; j++)
-		{
-			if (rand() % 3 == 1)
-			{
-				map[i][j] = 1;
-			}
-		}
-	}
+	GenerateNewMap(map);
 
 	while (true)
 	{
-		this_thread::sleep_for(5ms); // the game speed
+		if (GetKeyState('R') & 0x8000/*Check if high-order bit is set (1 << 15)*/)
+		{
+			GenerateNewMap(map);
+		}
 
-		//// test
-		//for (int i = 0; i < nScreenWidth; i++)
-		//	for (int j = 0; j < nScreenHeight; j++)
-		//		map[i][j] ^= 0b1;
+
+		this_thread::sleep_for(20ms); // the game speed
 
 		// timer
 		auto start = std::chrono::high_resolution_clock::now();
 
+		NewGeneration(map, newMap, mapWidth, mapHeight);
 
-		for (int i = 0; i < mapWidth; i++)
-		{
-			for (int j = 0; j < mapHeight; j++)
-			{
-				int aliveAround = 0;
-				for (int x = -1; x < 2; x++)
-				{
-					for (int y = -1; y < 2; y++)
-					{
-						if (i + x < 0 || i + x > mapHeight - 1 || j + y < 0 || j + y > mapHeight - 1 || (x == 0 && y == 0))
-							continue;
-						if (map[i + x][j + y] == 1)
-							aliveAround++;
-					}
-				}
-
-
-				if (map[i][j] == 1)
-				{
-					if (aliveAround < 2)
-					{
-						newMap[i][j] = 0;
-						continue;
-					}
-					else if (aliveAround > 3)
-					{
-						newMap[i][j] = 0;
-						continue;
-					}
-					if (aliveAround == 2 || aliveAround == 3)
-					{
-						newMap[i][j] = 1;
-					}
-				}
-				else if (map[i][j] == 0)
-				{
-					if (aliveAround == 3)
-						newMap[i][j] = 1;
-				}
-			}
-		}
-
-
-		for (int i = 0; i < mapWidth; i++)
-		{
-			for (int j = 0; j < mapHeight; j++)
-			{
-				map[i][j] = newMap[i][j];
-			}
-		}
-
-
-		// generate frame
-		for (int i = 0; i < nScreenWidth; i += 2) 
-		{
-			for (int j = 0; j < nScreenHeight; j++)
-			{
-				if (map[i >> 1][j] == 1)
-				{
-					screen[i + j * nScreenWidth] = 0x2588; // '█' = UTF-16 (hex) 0x2588
-					screen[i + j * nScreenWidth + 1] = 0x2588;
-				}
-				else
-				{
-					screen[i + j * nScreenWidth] = ' ';
-					screen[i + j * nScreenWidth + 1] = ' ';
-				}
-			}
-		}
-
+		GenerateFrame(map, screen);
 
 		// timer
 		auto finish = std::chrono::high_resolution_clock::now();
@@ -182,16 +202,8 @@ int main()
 		WriteConsoleOutputCharacter(hConsole, screen, nScreenWidth * nScreenHeight, { 0,0 }, &dwBytesWritten);
 	}
 
-	for (int i = 0; i < mapWidth; i++)
-	{
-		delete[] map[i];
-	}
-	delete[] map;
-	for (int i = 0; i < mapWidth; i++)
-	{
-		delete[] newMap[i];
-	}
-	delete[] newMap;
+	DeleteMap(map, mapWidth);
+	DeleteMap(newMap, mapWidth);
 }
 
 
